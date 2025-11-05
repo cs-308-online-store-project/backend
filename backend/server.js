@@ -1,6 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+
+// Routes
+const healthRoutes = require('./src/routes/healthRoutes');
+const authRoutes   = require('./src/routes/authRoutes');
+const cartRoutes   = require('./src/routes/cartRoutes');
 const productRoutes = require('./src/routes/product.routes');
 
 const app = express();
@@ -9,23 +14,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Routes
-const healthRoutes = require('./src/routes/healthRoutes');
-app.use('/api', healthRoutes);
+// Routes mount
+app.use('/api',        healthRoutes);
+app.use('/api/auth',   authRoutes);
+app.use('/api',        cartRoutes);
 app.use('/api/products', productRoutes);
 
 // Root
-app.get('/', (req, res) => {
-  res.send('CS308 Online Store Backend is running.');
-});
+app.get('/', (req, res) => res.send('CS308 Online Store Backend is running.'));
 
-// Start server SADECE test değilse
-if (process.env.NODE_ENV !== 'test') {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`✅ Server listening on http://localhost:${PORT}`);
-  });
-}
-
-// Export app for testing
 module.exports = app;
