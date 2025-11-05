@@ -11,9 +11,11 @@ app.use(express.json());
 // Routes
 const healthRoutes = require('./src/routes/healthRoutes');
 const authRoutes   = require('./src/routes/authRoutes');   // <-- VAR
+const cartRoutes   = require('./src/routes/cartRoutes');   
 
 app.use('/api',      healthRoutes);  // /api/health
 app.use('/api/auth', authRoutes);    // /api/auth/register, /api/auth/login
+app.use('/api', cartRoutes);    // /api/cart/...
 
 // Root
 app.get('/', (req, res) => res.send('CS308 Online Store Backend is running.'));
