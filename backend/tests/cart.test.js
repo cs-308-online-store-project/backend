@@ -35,6 +35,8 @@ describe('Cart API (JWT protected)', () => {
   };
 
   beforeAll(async () => {
+    await knex('order_items').del();
+    await knex('orders').del();
     await knex('cart_items').del();
     await knex('carts').del();
     await knex('products').del();
@@ -64,6 +66,8 @@ describe('Cart API (JWT protected)', () => {
 
   afterAll(async () => {
     try {
+      await knex('order_items').del();
+      await knex('orders').del();
       await knex('cart_items').del();
       await knex('carts').del();
       await knex('products').del();

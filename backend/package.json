@@ -7,7 +7,10 @@
     "dev": "nodemon server.js",
     "db:migrate": "knex --knexfile knexfile.js migrate:latest",
     "db:rollback": "knex --knexfile knexfile.js migrate:rollback",
-    "test": "jest --detectOpenHandles --forceExit",
+    "db:seed": "knex --knexfile knexfile.js seed:run",
+    "db:reset": "npm run db:rollback -- --all && npm run db:migrate && npm run db:seed",
+    "pretest": "NODE_ENV=test knex --knexfile knexfile.js migrate:rollback --all && NODE_ENV=test knex --knexfile knexfile.js migrate:latest && NODE_ENV=test knex --knexfile knexfile.js seed:run",
+    "test": "NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },

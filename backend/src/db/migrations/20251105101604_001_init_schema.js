@@ -36,6 +36,10 @@ exports.up = async function (knex) {
     t.boolean('warranty_status').defaultTo(false);
     t.string('distributor');
     t
+      .string('image_url')
+      .notNullable()
+      .defaultTo('https://placehold.co/600x800?text=Product');
+    t
       .integer('category_id')
       .unsigned()
       .references('id')
