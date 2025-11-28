@@ -12,6 +12,7 @@ const mapOrderRecord = (order, itemsMap) => {
     totalPrice: order.total_price !== undefined ? Number(order.total_price) : null,
     address: order.address || null,
     createdAt: order.created_at,
+    invoice_pdf: order.invoice_pdf || null, 
     items: items.map((item) => ({
       id: item.id,
       productId: item.product_id,

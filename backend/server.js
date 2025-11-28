@@ -10,6 +10,7 @@ const productRoutes = require('./src/routes/product.routes');
 const orderRoutes   = require('./src/routes/orderRoutes');
 const categoryRoutes = require('./src/routes/categoryRoutes');
 const wishlistRoutes = require('./src/routes/wishlistRoutes');
+const invoiceRoutes = require('./src/routes/invoiceRoutes');
 
 
 const app = express();
@@ -27,6 +28,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders',   orderRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 
 // Root
