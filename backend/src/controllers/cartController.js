@@ -1,5 +1,6 @@
 const CartModel = require('../models/cartModel');
 const CartItemModel = require('../models/cartItemModel');
+const knex = require('../db/knex');
 
 const parseQuantity = (value) => {
   const parsed = Number(value);
@@ -43,18 +44,52 @@ exports.getCart = async (req, res) => {
 exports.addToCart = async (req, res) => {
   const userId = req.user?.id || req.user?.sub;
   if (!userId) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   const { productId, quantity } = req.body || {};
   const parsedQuantity = parseQuantity(quantity);
   if (!productId || !parsedQuantity) {
-    return res.status(400).json({ message: 'productId and positive quantity are required' });
+    return res.status(400).json({
+      message: "productId and positive quantity are required",
+    });
   }
 
   try {
     const cart = await CartModel.ensureCart(userId);
-    const item = await CartItemModel.addOrUpdateItem(cart.id, productId, parsedQuantity);
+
+    // 1) Ürünü stok bilgisiyle al
+    const product = await knex("products")
+      .select("id", "stock")
+      .where({ id: productId })
+      .first();
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // 2) Sepette aynı ürün zaten var mı?
+    const existingItem = await knex("cart_items")
+      .where({ cart_id: cart.id, product_id: productId })
+      .first();
+
+    // Şu an sepetteki toplam miktar
+    const currentQty = existingItem ? Number(existingItem.quantity) : 0;
+
+    // Talep edilen yeni total: mevcut + eklemek istediğin
+    const requestedTotal = currentQty + parsedQuantity;
+
+    // 3) Stok yeterli mi?
+    if (product.stock < requestedTotal) {
+      return res.status(400).json({ message: "Insufficient stock" });
+    }
+
+    // 4) Stok yeterliyse item'i ekle/güncelle
+    const item = await CartItemModel.addOrUpdateItem(
+      cart.id,
+      productId,
+      parsedQuantity
+    );
 
     const responseItem = {
       id: item.id,
@@ -65,14 +100,13 @@ exports.addToCart = async (req, res) => {
       totalPrice: Number(item.price) * Number(item.quantity),
     };
 
-    res.status(201).json(responseItem);
+    return res.status(201).json(responseItem);
   } catch (err) {
-    if (err.code === '23514' || err.code === '23503') {
-      return res.status(400).json({ message: 'Invalid product or quantity' });
-    }
-    res.status(500).json({ error: err.message });
+    console.error("[addToCart] error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
+
 
 exports.updateQuantity = async (req, res) => {
   const userId = req.user?.id || req.user?.sub;

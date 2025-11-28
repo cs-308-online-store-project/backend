@@ -30,7 +30,6 @@ exports.createOrder = async (req, res) => {
     // 1) Find cart for the user
     const cart = await knex("carts").where({ user_id: userId }).first();
     if (!cart) {
-      // No cart at all → treat as empty
       return res.status(400).json({ success: false, error: "Cart is empty" });
     }
 
@@ -41,7 +40,6 @@ exports.createOrder = async (req, res) => {
       .select(
         "ci.product_id",
         "ci.quantity",
-        // Some adapters return numeric as string; cast for consistency
         knex.raw("CAST(p.price AS DECIMAL(10,2)) as price")
       );
 
@@ -55,7 +53,7 @@ exports.createOrder = async (req, res) => {
       0
     );
 
-    // 4) Transaction: create order → add items → decrement stock → clear cart
+    // 4) Transaction: create order → add items → decrement stock (with check) → clear cart
     const createdOrder = await knex.transaction(async (trx) => {
       // 4.1) Create order
       const [order] = await trx("orders")
@@ -72,15 +70,23 @@ exports.createOrder = async (req, res) => {
         order_id: order.id,
         product_id: ci.product_id,
         quantity: ci.quantity,
-        price: ci.price, // column is 'price' in migration
+        price: ci.price,
       }));
       await trx("order_items").insert(items);
 
-      // 4.3) Decrement stock on products (column is quantity_in_stock)
+      // 4.3) Decrement stock on products atomically (column is 'stock')
       for (const ci of cartItems) {
-        await trx("products")
-          .where({ id: ci.product_id })
-          .decrement("quantity_in_stock", ci.quantity);
+        const updated = await trx("products")
+          .where("id", ci.product_id)
+          .andWhere("stock", ">=", ci.quantity)
+          .update({
+            stock: knex.raw("stock - ?", [ci.quantity]),
+          });
+
+        // Yeterli stok yoksa, tüm transaction'ı iptal et
+        if (updated === 0) {
+          throw new Error("INSUFFICIENT_STOCK");
+        }
       }
 
       // 4.4) Clear cart items
@@ -89,13 +95,19 @@ exports.createOrder = async (req, res) => {
       return order;
     });
 
-    // 5) Respond with newly created order
     return res.status(201).json({ success: true, data: createdOrder });
   } catch (err) {
     console.error("[createOrder] error:", err);
+
+    if (err.message === "INSUFFICIENT_STOCK") {
+      // Transaction rollback oldu → stoklar ve cart olduğu gibi kaldı
+      return res.status(400).json({ success: false, error: "Insufficient stock" });
+    }
+
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
 
 exports.getOrders = async (req, res) => {
   const userId = req.user?.id || req.user?.sub;
