@@ -79,9 +79,9 @@ exports.createOrder = async (req, res) => {
       for (const ci of cartItems) {
         const updated = await trx("products")
           .where("id", ci.product_id)
-          .andWhere("stock", ">=", ci.quantity)
+          .andWhere("quantity_in_stock", ">=", ci.quantity)
           .update({
-            stock: knex.raw("stock - ?", [ci.quantity]),
+            quantity_in_stock: knex.raw("quantity_in_stock - ?", [ci.quantity]),
           });
 
         // Yeterli stok yoksa, tüm transaction'ı iptal et
