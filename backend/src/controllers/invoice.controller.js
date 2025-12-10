@@ -1,17 +1,27 @@
-// backend/src/controllers/invoice.controller.js
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
-const knex = require('../db/knex');
+const nodemailer = require('nodemailer');
+const knex = require('../db/knex'); 
 
-// Invoice klasörünü oluştur (yoksa)
 const invoicesDir = path.join(__dirname, '../../invoices');
+
+// Invoices klasörünü oluştur
 if (!fs.existsSync(invoicesDir)) {
   fs.mkdirSync(invoicesDir, { recursive: true });
 }
 
-// PDF Invoice oluştur
-exports.generateInvoice = async (req, res) => {
+// Email transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+// PDF Generate & Email
+exports.generateAndEmailInvoice = async (req, res) => {
   const { orderId } = req.params;
   const userId = req.user?.id || req.user?.sub;
 
@@ -25,19 +35,34 @@ exports.generateInvoice = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    // 2. Order items al
+    // 2. User bilgisini al
+    const user = await knex('users').where({ id: userId }).first();
+
+    // 3. Order items al
     const orderItems = await knex('order_items as oi')
       .join('products as p', 'oi.product_id', 'p.id')
       .where('oi.order_id', orderId)
       .select('p.name', 'oi.quantity', 'oi.price');
 
-    // 3. PDF oluştur
-    const doc = new PDFDocument({ margin: 50 });
+    // 4. PDF oluştur - UTF-8 encoding ile
+    const doc = new PDFDocument({ 
+      margin: 50,
+      bufferPages: true
+    });
+
+    const arialPath = '/System/Library/Fonts/Supplemental/Arial.ttf';
+    if (fs.existsSync(arialPath)) {
+      doc.registerFont('Arial', arialPath);
+      doc.font('Arial');
+    } else {
+      // Fallback to Helvetica
+      doc.font('Helvetica');
+    }
+
     const filename = `invoice_${orderId}_${Date.now()}.pdf`;
     const filepath = path.join(invoicesDir, filename);
-
-    // File stream
     const writeStream = fs.createWriteStream(filepath);
+    
     doc.pipe(writeStream);
 
     // Header
@@ -52,20 +77,19 @@ exports.generateInvoice = async (req, res) => {
     // Order info
     doc.fontSize(12);
     doc.text(`Order Number: #${order.id}`);
-    doc.text(`Date: ${new Date(order.created_at).toLocaleDateString()}`);
+    doc.text(`Date: ${new Date(order.created_at).toLocaleDateString('en-US')}`);
     doc.text(`Status: ${order.status.toUpperCase()}`);
     doc.moveDown();
 
-    // Shipping address
+    // Shipping address - Türkçe karakterler burada olabilir
     doc.fontSize(12).text('Shipping Address:', { underline: true });
-    doc.fontSize(10).text(order.address);
+    doc.fontSize(10).text(order.address || 'Not specified');
     doc.moveDown();
 
-    // Items table header
+    // Items table
     doc.fontSize(12).text('Items:', { underline: true });
     doc.moveDown(0.5);
 
-    // Table
     let y = doc.y;
     doc.fontSize(10);
     doc.text('Product', 50, y);
@@ -77,9 +101,9 @@ exports.generateInvoice = async (req, res) => {
     doc.moveTo(50, y).lineTo(550, y).stroke();
     y += 10;
 
-    // Items
+    // Items - Ürün isimleri Türkçe olabilir
     orderItems.forEach((item) => {
-      doc.text(item.name, 50, y);
+      doc.text(item.name, 50, y, { width: 240 });
       doc.text(item.quantity.toString(), 300, y);
       doc.text(`$${Number(item.price).toFixed(2)}`, 370, y);
       doc.text(`$${(Number(item.price) * item.quantity).toFixed(2)}`, 470, y);
@@ -91,64 +115,64 @@ exports.generateInvoice = async (req, res) => {
     doc.moveTo(50, y).lineTo(550, y).stroke();
     y += 15;
     doc.fontSize(12);
-    doc.text('TOTAL:', 370, y, { bold: true });
-    doc.text(`$${Number(order.total_price).toFixed(2)}`, 470, y, { bold: true });
+    doc.text('TOTAL:', 370, y);
+    doc.text(`$${Number(order.total_price).toFixed(2)}`, 470, y);
 
     // Footer
     doc.moveDown(3);
     doc.fontSize(10).text('Thank you for shopping with Urban Threads!', { align: 'center' });
 
-    // Finalize PDF
     doc.end();
 
-    // ✅ YENİ - Promise ile bekle
-    await new Promise((resolve, reject) => {
-      writeStream.on('finish', resolve);
-      writeStream.on('error', reject);
-    });
+    // 5. PDF oluştuktan sonra email gönder
+    writeStream.on('finish', async () => {
+      try {
+        // Email gönder
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: user.email,
+          subject: `Urban Threads - Invoice #${orderId}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #333;">Hello ${user.username || user.email},</h2>
+              <p>Your invoice for order <strong>#${orderId}</strong> is ready!</p>
+              <p>You can find the invoice attached to this email.</p>
+              <br>
+              <p>Thank you for shopping with us!</p>
+              <p><strong>Urban Threads Team</strong></p>
+            </div>
+          `,
+          attachments: [{
+            filename: filename,
+            path: filepath
+          }]
+        });
 
-    // Database'i güncelle (await ile)
-    await knex('orders')
-      .where({ id: orderId })
-      .update({ invoice_pdf: filename });
+        // Database'e kaydet
+        await knex('orders')
+          .where({ id: orderId })
+          .update({ invoice_pdf: filename });
 
-    console.log(`✅ Invoice generated: ${filename}`);
+        res.json({ 
+          success: true, 
+          message: 'Invoice has been sent to your email!',
+          filename 
+        });
 
-    res.json({ 
-      success: true, 
-      message: 'Invoice generated',
-      filename 
+      } catch (emailError) {
+        console.error('Email sending error:', emailError);
+        res.status(500).json({ 
+          message: 'Invoice generated but could not be sent via email',
+          error: emailError.message 
+        });
+      }
     });
 
   } catch (error) {
-    console.error('❌ Error generating invoice:', error);
-    res.status(500).json({ message: 'Failed to generate invoice' });
-  }
-};
-
-// PDF Download
-exports.downloadInvoice = async (req, res) => {
-  const { orderId } = req.params;
-  const userId = req.user?.id || req.user?.sub;
-
-  try {
-    const order = await knex('orders')
-      .where({ id: orderId, user_id: userId })
-      .first();
-
-    if (!order || !order.invoice_pdf) {
-      return res.status(404).json({ message: 'Invoice not found' });
-    }
-
-    const filepath = path.join(invoicesDir, order.invoice_pdf);
-
-    if (!fs.existsSync(filepath)) {
-      return res.status(404).json({ message: 'Invoice file not found' });
-    }
-
-    res.download(filepath);
-  } catch (error) {
-    console.error('Error downloading invoice:', error);
-    res.status(500).json({ message: 'Failed to download invoice' });
+    console.error('Error generating invoice:', error);
+    res.status(500).json({ 
+      message: 'Failed to generate invoice',
+      error: error.message 
+    });
   }
 };
