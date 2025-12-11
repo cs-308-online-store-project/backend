@@ -91,6 +91,9 @@ exports.addToCart = async (req, res) => {
       parsedQuantity
     );
 
+    // 5) Ürünün stoktan düşülmesi
+    await knex("products").where({ id: productId }).decrement("stock", parsedQuantity);
+
     const responseItem = {
       id: item.id,
       productId: item.product_id,
@@ -111,31 +114,67 @@ exports.addToCart = async (req, res) => {
 exports.updateQuantity = async (req, res) => {
   const userId = req.user?.id || req.user?.sub;
   if (!userId) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   const { quantity } = req.body || {};
   const parsedQuantity = parseQuantity(quantity);
   if (!parsedQuantity) {
-    return res.status(400).json({ message: 'Quantity must be a positive integer' });
+    return res
+      .status(400)
+      .json({ message: "Quantity must be a positive integer" });
   }
 
   const itemId = Number(req.params.id);
   if (!Number.isInteger(itemId)) {
-    return res.status(400).json({ message: 'Invalid cart item id' });
+    return res.status(400).json({ message: "Invalid cart item id" });
   }
 
   try {
     const existing = await CartItemModel.getItemWithCart(itemId);
     if (!existing) {
-      return res.status(404).json({ message: 'Cart item not found' });
+      return res.status(404).json({ message: "Cart item not found" });
     }
 
     if (!ensureOwnership(existing.user_id, userId)) {
-      return res.status(403).json({ message: 'Forbidden' });
+      return res.status(403).json({ message: "Forbidden" });
     }
 
-    const updated = await CartItemModel.updateItemQuantity(itemId, parsedQuantity);
+    const oldQty = Number(existing.quantity);
+    const newQty = parsedQuantity;
+    const diff = newQty - oldQty; // >0: ekstra lazım, <0: iade
+
+    // İlgili ürünü al
+    const product = await knex("products")
+      .select("id", "stock")
+      .where({ id: existing.product_id })
+      .first();
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // diff > 0 → daha fazla ürün istiyoruz, stoktan çek
+    if (diff > 0) {
+      if (product.stock < diff) {
+        return res
+          .status(400)
+          .json({ message: "Insufficient stock for requested quantity" });
+      }
+
+      await knex("products")
+        .where({ id: product.id })
+        .decrement("stock", diff);
+    }
+
+    // diff < 0 → miktarı azalttık, stoğa iade
+    if (diff < 0) {
+      await knex("products")
+        .where({ id: product.id })
+        .increment("stock", -diff); // diff negatif, o yüzden -diff
+    }
+
+    const updated = await CartItemModel.updateItemQuantity(itemId, newQty);
     const responseItem = {
       id: updated.id,
       productId: updated.product_id,
@@ -145,36 +184,48 @@ exports.updateQuantity = async (req, res) => {
       totalPrice: Number(updated.price) * Number(updated.quantity),
     };
 
-    res.json(responseItem);
+    return res.json(responseItem);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[updateQuantity] error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
+
 
 exports.removeItem = async (req, res) => {
   const userId = req.user?.id || req.user?.sub;
   if (!userId) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   const itemId = Number(req.params.id);
   if (!Number.isInteger(itemId)) {
-    return res.status(400).json({ message: 'Invalid cart item id' });
+    return res.status(400).json({ message: "Invalid cart item id" });
   }
 
   try {
     const existing = await CartItemModel.getItemWithCart(itemId);
     if (!existing) {
-      return res.status(404).json({ message: 'Cart item not found' });
+      return res.status(404).json({ message: "Cart item not found" });
     }
 
     if (!ensureOwnership(existing.user_id, userId)) {
-      return res.status(403).json({ message: 'Forbidden' });
+      return res.status(403).json({ message: "Forbidden" });
     }
 
+    const qty = Number(existing.quantity);
+
+    // 1) Stoğa geri ekle
+    await knex("products")
+      .where({ id: existing.product_id })
+      .increment("stock", qty);
+
+    // 2) Sepet item'ını sil
     await CartItemModel.removeItem(itemId);
-    res.json({ message: 'Item removed' });
+
+    return res.json({ message: "Item removed and stock restored" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[removeItem] error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };

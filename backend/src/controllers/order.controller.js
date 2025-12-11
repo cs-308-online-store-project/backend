@@ -73,20 +73,6 @@ exports.createOrder = async (req, res) => {
       }));
       await trx("order_items").insert(items);
 
-      // ✅ 4.3) Correct stock decrement using "stock" column
-      for (const ci of cartItems) {
-        const updated = await trx("products")
-          .where("id", ci.product_id)
-          .andWhere("stock", ">=", ci.quantity)
-          .update({
-            stock: trx.raw("stock - ?", [ci.quantity]),
-          });
-
-        if (updated === 0) {
-          throw new Error("INSUFFICIENT_STOCK");
-        }
-      }
-
       // 4.4) Clear cart
       await trx("cart_items").where({ cart_id: cart.id }).del();
 
