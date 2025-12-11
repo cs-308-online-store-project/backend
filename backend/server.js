@@ -11,6 +11,7 @@ const orderRoutes   = require('./src/routes/orderRoutes');
 const categoryRoutes = require('./src/routes/categoryRoutes');
 const wishlistRoutes = require('./src/routes/wishlistRoutes');
 const invoiceRoutes = require('./src/routes/invoiceRoutes');
+const reviewRoutes = require('./src/routes/reviewRoutes');
 
 
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api/orders',   orderRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 
 // Root
