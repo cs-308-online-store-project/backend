@@ -60,7 +60,7 @@ exports.addToCart = async (req, res) => {
 
     // 1) Ürünü stok bilgisiyle al
     const product = await knex("products")
-      .select("id", "quantity_in_stock")
+      .select("id", "stock")
       .where({ id: productId })
       .first();
 

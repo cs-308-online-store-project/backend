@@ -47,7 +47,7 @@ describe('Product API Tests', () => {
       model: 'TP-2024',
       serial_number: 'TEST123456',
       description: 'This is a test product',
-      quantity_in_stock: 50,
+      stock: 50,
       price: 199.99,
       warranty_status: true,
       distributor: 'Test Distributor',
@@ -76,7 +76,7 @@ describe('Product API Tests', () => {
         .insert({
           name: 'Test Product',
           price: 99.99,
-          quantity_in_stock: 10,
+          stock: 10,
           category_id: testCategoryId
         })
         .returning('*');
@@ -110,7 +110,7 @@ describe('Product API Tests', () => {
         .insert({
           name: 'Test Product',
           price: 99.99,
-          quantity_in_stock: 10,
+          stock: 10,
           category_id: testCategoryId
         })
         .returning('*');
@@ -120,7 +120,7 @@ describe('Product API Tests', () => {
     const updateData = {
       name: 'Updated Product Name',
       price: 299.99,
-      quantity_in_stock: 100
+      stock: 100
     };
 
     const res = await request(app)
@@ -131,7 +131,7 @@ describe('Product API Tests', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.name).toBe('Updated Product Name');
     expect(res.body.data.price).toBe('299.99');
-    expect(res.body.data.quantity_in_stock).toBe(100);
+    expect(res.body.data.stock).toBe(100);
   });
 
   // TEST 6: Remove a product
@@ -141,7 +141,7 @@ describe('Product API Tests', () => {
       .insert({
         name: 'Product to Delete',
         price: 49.99,
-        quantity_in_stock: 5,
+        stock: 5,
         category_id: testCategoryId
       })
       .returning('*');
@@ -164,7 +164,7 @@ describe('Product API Tests', () => {
     const invalidProduct = {
       // name eksik (gerekli alan)
       price: 'invalid_price', // string olmamalı
-      quantity_in_stock: -5 // negatif olmamalı
+      stock: -5 // negatif olmamalı
     };
 
     const res = await request(app)

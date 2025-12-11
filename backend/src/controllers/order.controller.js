@@ -1,6 +1,4 @@
 // backend/src/controllers/order.controller.js
-// Creates an order from the current user's cart using the DB schema in init_schema.
-// Uses a single transaction to: create order, insert order_items, decrement stock, clear cart.
 
 const knex = require("../db/knex");
 
@@ -54,7 +52,7 @@ exports.createOrder = async (req, res) => {
       0
     );
 
-    // 4) Transaction: create order → add items → decrement stock (with check) → clear cart
+    // 4) Transaction
     const createdOrder = await knex.transaction(async (trx) => {
       // 4.1) Create order
       const [order] = await trx("orders")
@@ -75,22 +73,21 @@ exports.createOrder = async (req, res) => {
       }));
       await trx("order_items").insert(items);
 
-      // 4.3) Decrement stock on products atomically (column is 'stock')
+      // ✅ 4.3) Correct stock decrement using "stock" column
       for (const ci of cartItems) {
         const updated = await trx("products")
           .where("id", ci.product_id)
-          .andWhere("quantity_in_stock", ">=", ci.quantity)
+          .andWhere("stock", ">=", ci.quantity)
           .update({
-            quantity_in_stock: knex.raw("quantity_in_stock - ?", [ci.quantity]),
+            stock: trx.raw("stock - ?", [ci.quantity]),
           });
 
-        // Yeterli stok yoksa, tüm transaction'ı iptal et
         if (updated === 0) {
           throw new Error("INSUFFICIENT_STOCK");
         }
       }
 
-      // 4.4) Clear cart items
+      // 4.4) Clear cart
       await trx("cart_items").where({ cart_id: cart.id }).del();
 
       return order;
@@ -101,14 +98,12 @@ exports.createOrder = async (req, res) => {
     console.error("[createOrder] error:", err);
 
     if (err.message === "INSUFFICIENT_STOCK") {
-      // Transaction rollback oldu → stoklar ve cart olduğu gibi kaldı
       return res.status(400).json({ success: false, error: "Insufficient stock" });
     }
 
     return res.status(500).json({ success: false, error: err.message });
   }
 };
-
 
 exports.getOrders = async (req, res) => {
   const userId = req.user?.id || req.user?.sub;

@@ -13,7 +13,7 @@ describe('Order API Tests (SCRUM-21)', () => {
   const TEST_USER_ID = 777777; // explicit to satisfy FK (users.id)
 
   let testCategoryId;
-  let testProduct;      // { id, quantity_in_stock, price, ... }
+  let testProduct;      // { id, stock, price, ... }
   let createdOrderId;
   let authToken;
 
@@ -62,7 +62,7 @@ describe('Order API Tests (SCRUM-21)', () => {
         model: 'OTP-1',
         serial_number: 'OTP-123456',
         description: 'Order test product',
-        quantity_in_stock: 10,
+        stock: 10,
         price: 50.00,
         warranty_status: false,
         distributor: 'Test Dist',
@@ -194,7 +194,7 @@ describe('Order API Tests (SCRUM-21)', () => {
   test('Stock should decrease after creating order', async () => {
     const p = await knex('products').where('id', testProduct.id).first();
     // Some drivers return numeric as string; cast to Number before compare
-    expect(Number(p.quantity_in_stock)).toBe(8);
+    expect(Number(p.stock)).toBe(8);
   });
 
   // TEST 4: Cart must be cleared after the order is created

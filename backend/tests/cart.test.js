@@ -54,7 +54,7 @@ describe('Cart API (JWT protected)', () => {
       .insert({
         name: 'Cart Product',
         price: 20.5,
-        quantity_in_stock: 100,
+        stock: 100,
         category_id: category.id,
       })
       .returning('*');

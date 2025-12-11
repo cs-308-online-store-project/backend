@@ -25,7 +25,7 @@ class WishlistModel {
         "wi.product_id",
         "p.name",
         "p.price",
-        "p.quantity_in_stock",
+        "p.stock",
         "p.created_at as product_created_at"
       )
       .where("w.user_id", userId)
