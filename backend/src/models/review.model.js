@@ -35,6 +35,14 @@ class Review {
     return review;
   }
 
+  static async updateStatus(id, approved) {
+    const [review] = await knex('reviews')
+      .where({ id })
+      .update({ approved })
+      .returning('*');
+    return review;
+  }
+
   static async delete(id) {
     return knex('reviews').where({ id }).del();
   }

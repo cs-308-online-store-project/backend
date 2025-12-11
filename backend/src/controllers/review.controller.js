@@ -61,3 +61,25 @@ exports.deleteReview = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+exports.updateStatus = async (req, res) => {
+  const { id } = req.params;
+  const { approved } = req.body;
+
+  if (typeof approved !== 'boolean') {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid approved value. Expected boolean.',
+    });
+  }
+
+  try {
+    const review = await Review.updateStatus(id, approved);
+    if (!review) {
+      return res.status(404).json({ success: false, error: 'Review not found' });
+    }
+    res.json({ success: true, data: review });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

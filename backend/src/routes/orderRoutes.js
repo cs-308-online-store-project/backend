@@ -17,5 +17,6 @@ router.get("/:id", requireAuth, orderController.getOrderById);
 
 // Update order status
 router.put("/:id/status", requireAuth, orderController.updateOrderStatus);
+router.patch("/:id/status", requireAuth, orderController.updateOrderStatus);
 
 module.exports = router;
