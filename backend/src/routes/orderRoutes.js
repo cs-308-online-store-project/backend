@@ -15,4 +15,7 @@ router.get("/", requireAuth, orderController.getOrders);
 // Retrieve a single order by id
 router.get("/:id", requireAuth, orderController.getOrderById);
 
+// Update order status
+router.put("/:id/status", requireAuth, orderController.updateOrderStatus);
+
 module.exports = router;

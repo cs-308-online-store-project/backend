@@ -177,3 +177,52 @@ exports.getOrderById = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+const ALLOWED_STATUSES = [
+  "processing",
+  "in_transit",
+  "delivered",
+  "cancelled",
+  "refunded",
+];
+
+exports.updateOrderStatus = async (req, res) => {
+  const orderId = Number(req.params.id);
+  const { status } = req.body;
+
+  if (!Number.isInteger(orderId)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  if (!status || !ALLOWED_STATUSES.includes(status)) {
+    return res.status(400).json({
+      message: "Invalid status",
+      allowedStatuses: ALLOWED_STATUSES,
+    });
+  }
+
+  try {
+    const updatedRows = await knex("orders")
+      .where({ id: orderId })
+      .update({ status })
+      .returning("*");
+
+    const updatedOrder = updatedRows?.[0];
+
+    if (!updatedOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const orderItems = await knex("order_items")
+      .where({ order_id: updatedOrder.id })
+      .orderBy("id", "asc");
+
+    const itemsMap = new Map();
+    itemsMap.set(updatedOrder.id, orderItems);
+
+    return res.json({ success: true, data: mapOrderRecord(updatedOrder, itemsMap) });
+  } catch (err) {
+    console.error("[updateOrderStatus] error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
