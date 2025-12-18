@@ -13,7 +13,7 @@ const categoryRoutes = require('./src/routes/categoryRoutes');
 const wishlistRoutes = require('./src/routes/wishlistRoutes');
 const invoiceRoutes = require('./src/routes/invoiceRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes');
-
+const userRoutes = require('./src/routes/userRoutes');
 
 const app = express();
 
@@ -33,7 +33,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/reviews', reviewRoutes);
-
+app.use('/api/users', userRoutes);
 
 // Root
 app.get('/', (req, res) =>
