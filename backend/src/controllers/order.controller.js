@@ -212,3 +212,86 @@ exports.updateOrderStatus = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+// Cancel Order - Only if status is "processing"
+exports.cancelOrder = async (req, res) => {
+  const userId = req.user?.id || req.user?.sub;
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const orderId = Number(req.params.id);
+  if (!Number.isInteger(orderId)) {
+    return res.status(400).json({ message: "Invalid order id" });
+  }
+
+  try {
+    // Transaction to ensure atomicity
+    const result = await knex.transaction(async (trx) => {
+      // 1. Get order and verify ownership
+      const order = await trx("orders")
+        .where({ id: orderId, user_id: userId })
+        .first();
+
+      if (!order) {
+        throw new Error("ORDER_NOT_FOUND");
+      }
+
+      // 2. Check if order can be cancelled (only "processing" status)
+      if (order.status !== "processing") {
+        throw new Error("CANNOT_CANCEL");
+      }
+
+      // 3. Get order items
+      const orderItems = await trx("order_items")
+        .where({ order_id: orderId });
+
+      // 4. Restore stock for each product
+      for (const item of orderItems) {
+        await trx("products")
+          .where({ id: item.product_id })
+          .increment("stock", item.quantity);
+      }
+
+      // 5. Update order status to "cancelled"
+      const [updatedOrder] = await trx("orders")
+        .where({ id: orderId })
+        .update({ status: "cancelled" })
+        .returning("*");
+
+      return { order: updatedOrder, items: orderItems };
+    });
+
+    // Map response
+    const itemsMap = new Map();
+    itemsMap.set(result.order.id, result.items);
+    const data = mapOrderRecord(result.order, itemsMap);
+
+    return res.json({ 
+      success: true, 
+      message: "Order cancelled successfully",
+      data 
+    });
+
+  } catch (err) {
+    console.error("[cancelOrder] error:", err);
+
+    if (err.message === "ORDER_NOT_FOUND") {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Order not found" 
+      });
+    }
+
+    if (err.message === "CANNOT_CANCEL") {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Order can only be cancelled if status is 'processing'" 
+      });
+    }
+
+    return res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+};
