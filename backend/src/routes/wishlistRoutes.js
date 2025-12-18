@@ -1,13 +1,13 @@
-// src/routes/wishlistRoutes.js
-const express = require("express");
-const { requireAuth } = require("../middleware/auth");
-const controller = require("../controllers/wishlistController");
-
+const express = require('express');
 const router = express.Router();
+const wishlistController = require('../controllers/wishlistController');
+const { requireAuth } = require('../middleware/auth');
+// Tüm route'lar authentication gerektirir
+router.use(requireAuth);
 
-router.get("/", requireAuth, controller.getWishlist);
-router.post("/items", requireAuth, controller.addToWishlist);
-router.delete("/items/:id", requireAuth, controller.removeFromWishlist);
-router.post("/items/:id/move-to-cart", requireAuth, controller.moveToCart);
+router.get('/', wishlistController.getWishlist);
+router.get('/count', wishlistController.getWishlistCount);
+router.post('/add', wishlistController.addToWishlist);
+router.delete('/remove/:productId', wishlistController.removeFromWishlist);
 
 module.exports = router;
