@@ -50,7 +50,14 @@ exports.getProductById = async (req, res) => {
 // POST /api/products 
 exports.createProduct = async (req, res) => {
   try {
-    const product = await Product.create(req.body);
+    const payload = { ...req.body };
+
+    if (payload.stock === undefined && payload.quantity_in_stock !== undefined) {
+      payload.stock = payload.quantity_in_stock;
+      delete payload.quantity_in_stock;
+    }
+
+    const product = await Product.create(payload);
     res.status(201).json({ success: true, data: product });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -77,5 +84,26 @@ exports.deleteProduct = async (req, res) => {
     res.json({ success: true, message: 'Product deleted' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// PATCH /api/products/:id/stock
+exports.updateProductStock = async (req, res) => {
+  try {
+    const { stock } = req.body;
+    const parsedStock = Number(stock);
+
+    if (!Number.isFinite(parsedStock) || !Number.isInteger(parsedStock) || parsedStock < 0) {
+      return res.status(400).json({ success: false, error: 'Stock must be a non-negative integer' });
+    }
+
+    const product = await Product.update(req.params.id, { stock: parsedStock });
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    return res.json({ success: true, data: product });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
   }
 };

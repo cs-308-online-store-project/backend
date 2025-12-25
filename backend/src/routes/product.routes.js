@@ -9,6 +9,7 @@ router.get('/:id', productController.getProductById);
 // Admin routes (not auth for now)
 router.post('/', productController.createProduct);
 router.put('/:id', productController.updateProduct);
+router.patch('/:id/stock', productController.updateProductStock);
 router.delete('/:id', productController.deleteProduct);
 
 module.exports = router;

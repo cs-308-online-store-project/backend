@@ -15,6 +15,12 @@ class Category {
       .returning('*');
     return category;
   }
+
+  static async delete(id) {
+    return knex('categories')
+      .where({ id })
+      .del();
+  }
 }
 
 module.exports = Category;
