@@ -35,4 +35,15 @@ const requireAuth = (req, res, next) => {
   }
 };
 
-module.exports = { requireAuth };
+const requireRole = (...roles) => (req, res, next) => {
+  const role = req.user?.role;
+  if (!role) return res.status(403).json({ message: "Role missing" });
+
+  const allowed = roles.flat();
+  if (!allowed.includes(role)) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  return next();
+};
+
+module.exports = { requireAuth, requireRole };

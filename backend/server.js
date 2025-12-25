@@ -14,33 +14,34 @@ const wishlistRoutes = require('./src/routes/wishlistRoutes');
 const invoiceRoutes = require('./src/routes/invoiceRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes');
 const userRoutes = require('./src/routes/userRoutes');
+const reportRoutes = require('./src/routes/reportRoutes'); // ✅ sadece require burada
 
+// ⬇️ app BURADA tanımlanmalı
 const app = express();
 
 app.use(cors());
-
-// Middlewares
 app.use(express.json());
 
 // Routes mount
-app.use('/api',         healthRoutes);
-app.use('/api/auth',    authRoutes);
-app.use('/api',         cartRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/orders',   orderRoutes);
-app.use('/api/order_items', orderItemRoutes);
-app.use('/api/categories', categoryRoutes);
-app.use('/api/wishlist', wishlistRoutes);
-app.use('/api/invoices', invoiceRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api',              healthRoutes);
+app.use('/api/auth',         authRoutes);
+app.use('/api',              cartRoutes);
+app.use('/api/products',     productRoutes);
+app.use('/api/orders',       orderRoutes);
+app.use('/api/order_items',  orderItemRoutes);
+app.use('/api/categories',   categoryRoutes);
+app.use('/api/wishlist',     wishlistRoutes);
+app.use('/api/invoices',     invoiceRoutes);
+app.use('/api/reviews',      reviewRoutes);
+app.use('/api/users',        userRoutes);
+app.use('/api/reports',      reportRoutes); // ✅ DOĞRU YERİ BURASI
 
 // Root
 app.get('/', (req, res) =>
   res.send('CS308 Online Store Backend is running.')
 );
 
-// 404 & error handler
+// 404
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 
 if (require.main === module) {
