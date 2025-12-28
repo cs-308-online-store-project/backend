@@ -15,6 +15,8 @@ const invoiceRoutes = require('./src/routes/invoiceRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const reportRoutes = require('./src/routes/reportRoutes'); // ✅ sadece require burada
+const discountRoutes = require('./src/routes/discountRoutes');
+
 
 // ⬇️ app BURADA tanımlanmalı
 const app = express();
@@ -35,6 +37,7 @@ app.use('/api/invoices',     invoiceRoutes);
 app.use('/api/reviews',      reviewRoutes);
 app.use('/api/users',        userRoutes);
 app.use('/api/reports',      reportRoutes); // ✅ DOĞRU YERİ BURASI
+app.use('/api/discounts', discountRoutes);
 
 // Root
 app.get('/', (req, res) =>
