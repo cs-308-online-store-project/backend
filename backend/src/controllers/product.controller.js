@@ -127,7 +127,13 @@ exports.updatePriceBySalesManager = async (req, res) => {
 
     const [updated] = await knex("products")
       .where({ id })
-      .update({ price, discount_rate: 0, list_price: null })
+      .update({
+        price,
+        discount_rate: 0,
+        discount_active: false,
+        discounted_price: null,
+        list_price: null,
+      })
       .returning("*");
 
     if (!updated) return res.status(404).json({ success: false, message: "Product not found" });
@@ -138,59 +144,53 @@ exports.updatePriceBySalesManager = async (req, res) => {
   }
 };
 
-exports.applyDiscountBySalesManager = async (req, res) => {
+
+
+exports.applyDiscountBySalesManager = async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
+    const productId = Number(req.params.id);               // DİKKAT: route "/:id/discount"
     const discountRate = Number(req.body?.discountRate);
 
-    if (!Number.isFinite(discountRate) || discountRate < 0 || discountRate > 100) {
-      return res.status(400).json({ success: false, message: "discountRate must be 0-100" });
+    if (!Number.isInteger(productId)) {
+      return res.status(400).json({ message: "Invalid product id" });
+    }
+    if (!Number.isFinite(discountRate) || discountRate < 0 || discountRate > 90) {
+      return res.status(400).json({ message: "Invalid discountRate (0-90)" });
     }
 
-    // product al
-    const product = await knex("products").where({ id }).first();
-    if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+    const product = await knex('products').where({ id: productId }).first();
+    if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // discount uygulanacak base fiyat:
-    const base = product.list_price ? Number(product.list_price) : Number(product.price);
-    const newPrice = Number((base * (1 - discountRate / 100)).toFixed(2));
+    const originalPrice = Number(product.price);
+    const discountedPrice = +(originalPrice * (1 - discountRate / 100)).toFixed(2);
 
-    const [updated] = await knex("products")
-      .where({ id })
+    await knex('products')
+      .where({ id: productId })
       .update({
-        list_price: base,          // ilk kez discount yiyorsan sakla
-        discount_rate: discountRate,
-        price: newPrice,           // “automatic price update” requirement
-      })
-      .returning("*");
+        discount_rate: Math.round(discountRate),
+        discounted_price: discountedPrice,
+        discount_active: discountRate > 0,
+      });
 
-    // wishlist kullanıcılarını bul
-    const users = await knex("wishlist_items as wi")
-      .join("wishlists as w", "wi.wishlist_id", "w.id")
-      .join("users as u", "w.user_id", "u.id")
-      .where("wi.product_id", id)
-      .select("u.email", "u.name");
+    // ✅ WISHLIST USERLARI BUL + NOTIFICATION INSERT
+    const userIds = await WishlistModel.getUserIdsWithProduct(productId);
 
-    // mail (users boşsa skip)
-    if (users.length) {
-      await Promise.all(
-        users.map((u) =>
-          transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: u.email,
-            subject: `Discount alert: ${updated.name}`,
-            html: `
-              <p>Hi ${u.name || ""},</p>
-              <p><b>${updated.name}</b> is now discounted!</p>
-              <p>New price: <b>$${Number(updated.price).toFixed(2)}</b> (Discount: ${updated.discount_rate}%)</p>
-            `,
-          })
-        )
-      );
-    }
+    const notifyResult = await NotificationService.notifyDiscount({
+      userIds,
+      productId,
+      productName: product.name,
+      discountRate: Math.round(discountRate),
+    });
 
-    return res.json({ success: true, data: updated, notified: users.length });
-  } catch (e) {
-    return res.status(500).json({ success: false, message: e.message });
+    return res.status(200).json({
+      message: "Discount applied",
+      productId,
+      discountRate: Math.round(discountRate),
+      discountedPrice,
+      notifiedUsers: notifyResult.inserted,
+    });
+  } catch (err) {
+    console.error("applyDiscountBySalesManager error:", err); // ✅ terminalde gör
+    return res.status(500).json({ message: err.message || "Server error" });
   }
 };

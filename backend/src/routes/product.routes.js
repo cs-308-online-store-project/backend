@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/product.controller');
 const { requireAuth, requireRole } = require("../middleware/auth");
+const discountController = require('../controllers/discountController');
 
 // Public routes
 router.get('/', productController.getAllProducts);
@@ -25,7 +26,7 @@ router.put(
   "/:id/discount",
   requireAuth,
   requireRole("sales_manager"),
-  productController.applyDiscountBySalesManager
+  discountController.applyDiscount
 );
 
 
