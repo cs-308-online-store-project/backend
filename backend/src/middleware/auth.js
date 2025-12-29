@@ -35,6 +35,7 @@ const requireAuth = (req, res, next) => {
   }
 };
 
+<<<<<<< Updated upstream
 const requireRole = (...roles) => (req, res, next) => {
   const role = req.user?.role;
   if (!role) return res.status(403).json({ message: "Role missing" });
@@ -47,3 +48,27 @@ const requireRole = (...roles) => (req, res, next) => {
 };
 
 module.exports = { requireAuth, requireRole };
+=======
+// Alias for requireAuth (for chat routes)
+const authenticate = requireAuth;
+
+// Optional auth - doesn't fail if no token
+const optionalAuth = (req, res, next) => {
+  const token = extractToken(req);
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = payload;
+  } catch (err) {
+    req.user = null;
+  }
+  
+  return next();
+};
+
+module.exports = { requireAuth, authenticate, optionalAuth };
+>>>>>>> Stashed changes
