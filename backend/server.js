@@ -1,55 +1,62 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 // Routes
-const healthRoutes      = require('./src/routes/healthRoutes');
-const authRoutes        = require('./src/routes/authRoutes');
-const cartRoutes        = require('./src/routes/cartRoutes');
-const productRoutes     = require('./src/routes/product.routes');
-const orderRoutes       = require('./src/routes/orderRoutes');
-const orderItemRoutes   = require('./src/routes/orderItemRoutes');
-const categoryRoutes    = require('./src/routes/categoryRoutes');
-const wishlistRoutes    = require('./src/routes/wishlistRoutes');
-const invoiceRoutes     = require('./src/routes/invoiceRoutes');
-const reviewRoutes      = require('./src/routes/reviewRoutes');
-const userRoutes        = require('./src/routes/userRoutes');
-const reportRoutes      = require('./src/routes/reportRoutes');
+const healthRoutes = require('./src/routes/healthRoutes');
+const authRoutes = require('./src/routes/authRoutes');
+const cartRoutes = require('./src/routes/cartRoutes');
+const productRoutes = require('./src/routes/product.routes');
+const orderRoutes = require('./src/routes/orderRoutes');
+const orderItemRoutes = require('./src/routes/orderItemRoutes');
+const categoryRoutes = require('./src/routes/categoryRoutes');
+const wishlistRoutes = require('./src/routes/wishlistRoutes');
+const invoiceRoutes = require('./src/routes/invoiceRoutes');
+const reviewRoutes = require('./src/routes/reviewRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+const reportRoutes = require('./src/routes/reportRoutes');
 
-// ✅ ADD THESE:
+// Optional feature routes (dosyalar gerçekten varsa kalsın)
+const discountRoutes = require('./src/routes/discountRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
-const discountRoutes     = require('./src/routes/discountRoutes'); // dosya varsa
+const chatRoutes = require('./src/routes/chatRoutes');
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// CORS (tek yerde, güvenli ayar)
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
-// (Opsiyonel) request log
-// app.use((req, res, next) => {
-//   console.log("REQ:", req.method, req.originalUrl);
-//   next();
-// });
+// Middlewares
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Static (uploads)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes mount
-app.use('/api',              healthRoutes);
-app.use('/api/auth',         authRoutes);
-app.use('/api',              cartRoutes);
-app.use('/api/products',     productRoutes);
-app.use('/api/orders',       orderRoutes);
-app.use('/api/order_items',  orderItemRoutes);
-app.use('/api/categories',   categoryRoutes);
-app.use('/api/wishlist',     wishlistRoutes);
-app.use('/api/invoices',     invoiceRoutes);
-app.use('/api/reviews',      reviewRoutes);
-app.use('/api/users',        userRoutes);
-app.use('/api/reports',      reportRoutes);
+app.use('/api', healthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api', cartRoutes);
 
-// ✅ new
-app.use('/api/notifications', notificationRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/order_items', orderItemRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/users', userRoutes);
 
-// ✅ only if you really use /api/discounts routes
+app.use('/api/reports', reportRoutes);
 app.use('/api/discounts', discountRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Root
 app.get('/', (req, res) => {
@@ -61,16 +68,24 @@ app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 
 // Global error handler (must be LAST middleware)
 app.use((err, req, res, next) => {
-  console.error("🔥 UNHANDLED ERROR:", err.stack || err);
+  console.error('🔥 UNHANDLED ERROR:', err.stack || err);
   res.status(err.status || 500).json({
-    message: err.message || "Internal Server Error",
+    message: err.message || 'Internal Server Error',
   });
 });
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
+  const http = require('http');
+  const server = http.createServer(app);
+
+  // Initialize Socket.io (chat için)
+  const { initializeSocket } = require('./src/socket');
+  initializeSocket(server);
+
+  server.listen(PORT, () => {
     console.log(`✅ Server listening on http://localhost:${PORT}`);
+    console.log('🔌 Socket.io ready');
   });
 }
 

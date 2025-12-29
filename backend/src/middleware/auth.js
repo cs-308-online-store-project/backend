@@ -1,5 +1,5 @@
 // src/middleware/auth.js
-// Simple JWT authentication middleware used by protected routes.
+// JWT authentication & authorization middlewares
 
 const jwt = require("jsonwebtoken");
 
@@ -20,6 +20,7 @@ const extractToken = (req) => {
   return null;
 };
 
+// ✅ REQUIRED AUTH (hard fail if no token)
 const requireAuth = (req, res, next) => {
   const token = extractToken(req);
   if (!token) {
@@ -35,15 +36,45 @@ const requireAuth = (req, res, next) => {
   }
 };
 
+// ✅ ROLE-BASED AUTH (admin, sales_manager, product_manager, etc.)
 const requireRole = (...roles) => (req, res, next) => {
   const role = req.user?.role;
-  if (!role) return res.status(403).json({ message: "Role missing" });
+  if (!role) {
+    return res.status(403).json({ message: "Role missing" });
+  }
 
   const allowed = roles.flat();
   if (!allowed.includes(role)) {
     return res.status(403).json({ message: "Forbidden" });
   }
+
   return next();
 };
 
-module.exports = { requireAuth, requireRole };
+// ✅ Alias (used by chat routes)
+const authenticate = requireAuth;
+
+// ✅ OPTIONAL AUTH (used by chat / public routes)
+const optionalAuth = (req, res, next) => {
+  const token = extractToken(req);
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = payload;
+  } catch (err) {
+    req.user = null;
+  }
+
+  return next();
+};
+
+module.exports = {
+  requireAuth,
+  requireRole,
+  authenticate,
+  optionalAuth,
+};
