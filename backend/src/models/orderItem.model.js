@@ -10,10 +10,20 @@ class OrderItem {
   }
 
   static async findByOrderId(orderId) {
-    return knex('order_items')
-      .where({ order_id: orderId })
-      .orderBy('id', 'asc');
-  }
+  return knex('order_items as oi')
+    .leftJoin('refund_requests as rr', 'oi.id', 'rr.order_item_id')
+    .where('oi.order_id', orderId)
+    .select(
+      'oi.id',
+      'oi.order_id',
+      'oi.product_id',
+      'oi.quantity',
+      'oi.price',
+      'rr.status as refund_status' // 🔥 KRİTİK
+    )
+    .orderBy('oi.id', 'asc');
+}
+
 
   static async create(data) {
     const [orderItem] = await knex('order_items')

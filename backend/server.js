@@ -16,7 +16,7 @@ const invoiceRoutes = require('./src/routes/invoiceRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
-
+const refundRoutes = require("./src/routes/refundRoutes");
 // Optional feature routes (dosyalar gerçekten varsa kalsın)
 const discountRoutes = require('./src/routes/discountRoutes');
 const notificationRoutes = require('./src/routes/notificationRoutes');
@@ -26,9 +26,9 @@ const app = express();
 
 // CORS (tek yerde, güvenli ayar)
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: ['http://localhost:5173', 'http://localhost:9000'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
@@ -46,6 +46,7 @@ app.use('/api', cartRoutes);
 
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use("/api/refunds", refundRoutes);
 app.use('/api/order_items', orderItemRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/wishlist', wishlistRoutes);
