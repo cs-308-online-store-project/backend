@@ -3,13 +3,21 @@
 const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/order.controller");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requireRole } = require("../middleware/auth");
 
 // Create order from user's cart
 router.post("/", orderController.createOrder);
 
 // Retrieve all orders for authenticated user
 router.get("/", requireAuth, orderController.getOrders);
+
+// Retrieve all orders for managers
+router.get(
+  "/all",
+  requireAuth,
+  requireRole("sales_manager", "product_manager"),
+  orderController.getAllOrders
+);
 
 // Retrieve a single order by id
 router.get("/:id", requireAuth, orderController.getOrderById);

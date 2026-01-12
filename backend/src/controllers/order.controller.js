@@ -2,9 +2,9 @@
 
 const knex = require("../db/knex");
 
-const mapOrderRecord = (order, itemsMap) => {
+const mapOrderRecord = (order, itemsMap, options = {}) => {
   const items = itemsMap.get(order.id) || [];
-  return {
+  const record = {
     id: order.id,
     status: order.status,
     totalPrice: order.total_price !== undefined ? Number(order.total_price) : null,
@@ -19,6 +19,12 @@ const mapOrderRecord = (order, itemsMap) => {
       totalPrice: Number(item.price) * Number(item.quantity),
     })),
   };
+
+  if (options.includeUserId) {
+    record.userId = order.user_id;
+  }
+
+  return record;
 };
 
 exports.createOrder = async (req, res) => {
@@ -127,6 +133,39 @@ exports.getOrders = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+exports.getAllOrders = async (req, res) => {
+  try {
+    const orders = await knex("orders").orderBy("created_at", "desc");
+
+    if (orders.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const orderIds = orders.map((order) => order.id);
+    const orderItems = await knex("order_items")
+      .whereIn("order_id", orderIds)
+      .orderBy("id", "asc");
+
+    const itemsMap = orderItems.reduce((acc, item) => {
+      if (!acc.has(item.order_id)) {
+        acc.set(item.order_id, []);
+      }
+      acc.get(item.order_id).push(item);
+      return acc;
+    }, new Map());
+
+    const data = orders.map((order) =>
+      mapOrderRecord(order, itemsMap, { includeUserId: true })
+    );
+
+    return res.json({ success: true, data });
+  } catch (err) {
+    console.error("[getAllOrders] error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 
 exports.getOrderById = async (req, res) => {
   const userId = req.user?.id || req.user?.sub;

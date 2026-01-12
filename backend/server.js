@@ -15,6 +15,7 @@ const wishlistRoutes = require('./src/routes/wishlistRoutes');
 const invoiceRoutes = require('./src/routes/invoiceRoutes');
 const reviewRoutes = require('./src/routes/reviewRoutes');
 const userRoutes = require('./src/routes/userRoutes');
+const adminOrderRoutes = require('./src/routes/adminOrderRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
 const refundRoutes = require("./src/routes/refundRoutes");
 // Optional feature routes (dosyalar gerçekten varsa kalsın)
@@ -46,6 +47,7 @@ app.use('/api', cartRoutes);
 
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/admin/orders', adminOrderRoutes);
 app.use("/api/refunds", refundRoutes);
 app.use('/api/order_items', orderItemRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -53,7 +55,6 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/users', userRoutes);
-
 app.use('/api/reports', reportRoutes);
 app.use('/api/discounts', discountRoutes);
 app.use('/api/notifications', notificationRoutes);
