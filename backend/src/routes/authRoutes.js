@@ -29,7 +29,19 @@ router.post("/register", async (req, res) => {
       [name, email, hash, tax_id || null, address || null, role || null]
     );
 
-    return res.status(201).json(rows[0]);
+    const user = rows[0];
+    
+    // Generate JWT token (same as login)
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role || "user" },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES || "24h" }
+    );
+
+    return res.status(201).json({
+      token,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role || "user" }
+    });
   } catch (err) {
     console.error("REGISTER ERR:", err);
     if (err.code === "23505") return res.status(409).json({ message: "Email already exists" });
