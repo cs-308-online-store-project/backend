@@ -67,6 +67,7 @@ exports.applyDiscount = async (req, res) => {
       discountRate: Math.round(discountRate),
       discountedPrice,
       notifiedUsers: notifyResult.inserted,
+      emailedUsers: notifyResult.emailed ?? 0,
     });
   } catch (err) {
     console.error("applyDiscount error:", err);

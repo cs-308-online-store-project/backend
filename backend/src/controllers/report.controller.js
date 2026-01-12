@@ -40,13 +40,23 @@ exports.salesReport = async (req, res) => {
     }
 
     const profit = revenue - cost;
-
+    const loss = profit < 0 ? Math.abs(profit) : 0;
     res.json({
       success: true,
-      totals: { revenue: Number(revenue.toFixed(2)), cost: Number(cost.toFixed(2)), profit: Number(profit.toFixed(2)) },
+      totals: {
+        revenue: Number(revenue.toFixed(2)),
+        cost: Number(cost.toFixed(2)),
+        profit: Number(profit.toFixed(2)),
+        loss: Number(loss.toFixed(2)),
+      },
       series: Object.entries(daily)
         .sort(([a],[b]) => a.localeCompare(b))
-        .map(([date, v]) => ({ date, revenue: Number(v.revenue.toFixed(2)), profit: Number(v.profit.toFixed(2)) })),
+        .map(([date, v]) => ({
+          date,
+          revenue: Number(v.revenue.toFixed(2)),
+          profit: Number(v.profit.toFixed(2)),
+          loss: v.profit < 0 ? Number(Math.abs(v.profit).toFixed(2)) : 0,
+        })),
     });
   } catch (e) {
     res.status(500).json({ message: e.message });
