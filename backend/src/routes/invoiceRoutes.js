@@ -3,7 +3,7 @@ const router = express.Router();
 const invoiceController = require('../controllers/invoice.controller');
 const { requireAuth, requireRole } = require("../middleware/auth");
 
-// Sales manager
+// Sales manager endpoints
 router.get(
   "/",
   requireAuth,
@@ -18,8 +18,10 @@ router.get(
   invoiceController.downloadInvoicePdf
 );
 
-
-// Generate and email invoice
+// Customer endpoints
 router.post('/:orderId/generate', requireAuth, invoiceController.generateAndEmailInvoice);
+
+// ✅ NEW: Customer can download their own invoice
+router.get('/:orderId/download', requireAuth, invoiceController.downloadMyInvoice);
 
 module.exports = router;

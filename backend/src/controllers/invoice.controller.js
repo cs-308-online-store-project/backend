@@ -202,3 +202,39 @@ exports.downloadInvoicePdf = async (req, res) => {
     return res.status(500).json({ message: e.message });
   }
 };
+
+// ✅ Customer: download own invoice
+exports.downloadMyInvoice = async (req, res) => {
+  const { orderId } = req.params;
+  const userId = req.user?.id || req.user?.sub;
+
+  try {
+    // Check if order belongs to user
+    const order = await knex('orders')
+      .where({ id: orderId, user_id: userId })
+      .first();
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (!order.invoice_pdf) {
+      return res.status(404).json({ message: 'Invoice not generated yet. Please generate it first.' });
+    }
+
+    const filepath = path.join(invoicesDir, order.invoice_pdf);
+    
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({ message: 'Invoice file not found on server' });
+    }
+
+    // Send file for download
+    return res.download(filepath, `invoice_${orderId}.pdf`);
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    return res.status(500).json({
+      message: 'Failed to download invoice',
+      error: error.message
+    });
+  }
+};
