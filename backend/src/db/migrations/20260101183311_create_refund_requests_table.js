@@ -12,6 +12,7 @@ exports.up = function (knex) {
     table.enu("status", ["pending", "approved", "rejected"])
       .notNullable()
       .defaultTo("pending");
+    table.decimal("refund_amount", 10, 2).notNullable();
 
     table.timestamp("created_at").notNullable().defaultTo(knex.fn.now());
 
